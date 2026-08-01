@@ -2,106 +2,103 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>GHOST-SCAN – Systemlage</title>
+<title>SYSTEM – STATUS ENGINE</title>
 
 <style>
-  body { font-family: Arial; background:#111; color:#eee; }
-  h1 { text-align:center; }
-  .respo-box {
-    border:1px solid #444;
-    padding:10px;
-    margin:10px;
-    background:#222;
-  }
-  .ok { color:#00ff88; }
-  .help { color:#ffcc00; }
-  .error { color:#ff4444; }
+body { background:#000; color:#0f0; font-family:monospace; padding:40px; }
+h1 { color:#6cf; letter-spacing:4px; margin-bottom:30px; }
+.block {
+    background:#111;
+    border:1px solid #333;
+    padding:25px;
+    margin-bottom:30px;
+    border-radius:8px;
+}
+.grid {
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+    gap:20px;
+}
+.item {
+    background:#111;
+    border:1px solid #333;
+    padding:20px;
+    border-radius:8px;
+    text-align:center;
+}
+pre {
+    background:#111;
+    border:1px solid #333;
+    padding:20px;
+    border-radius:8px;
+}
+.ok { color:#00ff88; }
+.help { color:#ffcc00; }
+.error { color:#ff4444; }
+.fail { color:#ff0000; }
+.miss { color:#ff0066; }
+.rdy { color:#66ccff; }
+.fit { color:#33ffcc; }
+.fix { color:#33cc33; }
 </style>
 </head>
 
 <body>
 
-<h1>GHOST‑SCAN – Systemlage</h1>
+<h1>SYSTEM – STATUS ENGINE</h1>
+
+<div class="block">
+<pre>
+SYSTEM.MODE = REAL‑SCAN
+SYSTEM.ACHSE = HELP | ERROR | MISS | FAIL | RDY | FIT | FIX
+SYSTEM.STATE = ACTIVE
+</pre>
+</div>
 
 <div id="output"></div>
 
-<script src="/fin.e.js"></script>
-
 <script>
-// ------------------------------------------------------
-// RESPO-Liste (ALLE Cluster)
-// ------------------------------------------------------
-const RESPO_NAMES = [
-  "AIR",
-  "boerse",
-  "markt3",
-  "HOME",
-  "USE",
-  "ACSH",
-  "REAL",
-  "BIL",
-  "DU",
-  "NG"
-];
-
-// ------------------------------------------------------
-// Loader
-// ------------------------------------------------------
-async function loadRespo(name){
-  try {
-    const res = await fetch(`/RESPO/${name}.json`);
-    return await res.json();
-  } catch(e){
-    return { NAME:name, MISS:true };
-  }
+// STATUS‑KLASSEN
+function statusClass(r){
+  if(r.RESULT === "HELP") return "help";
+  if(r.RESULT === "ERROR") return "error";
+  if(r.RESULT === "MISS") return "miss";
+  if(r.RESULT === "FAIL") return "fail";
+  if(r.RESULT === "RDY") return "rdy";
+  if(r.RESULT === "FIT") return "fit";
+  if(r.RESULT === "FIX") return "fix";
+  return "ok";
 }
 
-async function loadAllRespos(){
-  const respos = [];
-  for(const n of RESPO_NAMES){
-    respos.push(await loadRespo(n));
-  }
-  return respos;
-}
-
-// ------------------------------------------------------
-// Renderer
-// ------------------------------------------------------
-function renderScan(scan){
+// RENDER
+function render(scan){
   const out = document.getElementById("output");
   out.innerHTML = "";
 
   scan.forEach(r => {
     const box = document.createElement("div");
-    box.className = "respo-box";
-
-    let statusClass = "ok";
-    if(r.RESULT === "HELFEN") statusClass = "help";
-    if(r.ERROR === true) statusClass = "error";
-    if(r.MISS === true) statusClass = "error";
+    box.className = "block";
 
     box.innerHTML = `
-      <h2 class="${statusClass}">${r.NAME}</h2>
-      <p><b>ID:</b> ${r.ID}</p>
-      <p><b>LAGE:</b> ${r.RAUM ? JSON.stringify(r.RAUM) : "(keine LAGE)"}</p>
-      <p><b>STATUS:</b> ${r.STATUS}</p>
-      <p><b>RESULT:</b> ${r.RESULT}</p>
-      <p><b>OUT:</b> ${JSON.stringify(r.OUT)}</p>
-      <p><b>REAL:</b> ${r.WAHRHEIT || "?"}</p>
-      <p><b>EDIT:</b> ${r.IST_IST || "?"}</p>
+      <h2 class="${statusClass(r)}">${r.NAME}</h2>
+      <pre>
+ID: ${r.ID}
+LAGE: ${JSON.stringify(r.RAUM || {})}
+STATUS: ${r.STATUS}
+RESULT: ${r.RESULT}
+OUT: ${JSON.stringify(r.OUT || {})}
+WAHRHEIT: ${r.WAHRHEIT || "?"}
+EDIT: ${r.IST_IST || "?"}
+      </pre>
     `;
-
     out.appendChild(box);
   });
 }
 
-// ------------------------------------------------------
-// Start
-// ------------------------------------------------------
-loadAllRespos().then(respos => {
-  const scan = respos.map(r => GHOST_SCAN_REAL(r));
-  renderScan(scan);
-});
+// START
+fetch("/SYSTEM/SCAN.json")
+  .then(r => r.json())
+  .then(data => render(data));
 </script>
 
 </body>
